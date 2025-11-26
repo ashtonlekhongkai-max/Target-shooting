@@ -826,7 +826,18 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (!gameActive) return;
+            if (!gameActive) {
+                // Handle menu and game over screens
+                if (e.code === 'Enter') {
+                    e.preventDefault();
+                    if (!startMenu.classList.contains('hidden')) {
+                        startGameNow();
+                    } else if (!gameOverScreen.classList.contains('hidden')) {
+                        startNextLevel();
+                    }
+                }
+                return;
+            }
             
             // Start timer on first arrow key press
             if (!timerStarted && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
