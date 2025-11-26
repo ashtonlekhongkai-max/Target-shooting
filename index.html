@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS Reaction Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            font-family: Arial, sans-serif;
+            cursor: none;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow: hidden;
+        }
+        
+        .ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            color: #00ff00;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff00;
+            z-index: 100;
+        }
+        
+        .menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 50px;
+            border: 3px solid #00ff00;
+            text-align: center;
+            z-index: 200;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        }
+        
+        .menu h1 {
+            color: #00ff00;
+            margin-bottom: 20px;
+            font-size: 48px;
+            text-shadow: 0 0 15px #00ff00;
+        }
+        
+        .menu p {
+            color: #fff;
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        
+        .menu button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        
+        .menu button:hover {
+            background: #00cc00;
+            transform: scale(1.05);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .target {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #ff3333, #990000);
+            border: 3px solid #ff6666;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        
+        .target::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ffff00;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #ffff00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(255, 0, 0, 1), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
+        }
+        
+        @keyframes bombPulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(200, 0, 0, 0.7), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(220, 50, 50, 0.8), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
+        }
+        
+        .bomb {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #cc3333, #881111);
+            border: 3px solid #993333;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(200, 0, 0, 0.7), inset -2px -2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            animation: bombPulse 0.8s infinite;
+        }
+        
+        .bomb::before {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: linear-gradient(180deg, #8b4513, #654321);
+            border-radius: 2px;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+        
+        .bomb::after {
+            content: '';
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #ff6600;
+            border-radius: 50%;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px #ff6600;
+        }
+        
+        .target-pulse {
+            animation: pulse 0.5s infinite;
+        }
+        
+        .target-fading {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+        
+        .gun {
+            position: fixed;
+            bottom: 20px;
+            right: 30px;
+            width: 140px;
+            height: 120px;
+            z-index: 150;
+        }
+        
+        .gun-barrel {
+            position: absolute;
+            width: 80px;
+            height: 18px;
+            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+            border: 2px solid #444;
+            top: 15px;
+            right: 50px;
+            border-radius: 10px;
+            box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 200, 0, 0.4);
+        }
+        
+        .gun-barrel::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 12px;
+            background: radial-gradient(ellipse at center, #444, #222);
+            right: -12px;
+            top: 3px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+        }
+        
+        .gun-body {
+            position: absolute;
+            width: 100px;
+            height: 110px;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #3a3a3a 100%);
+            border: 2px solid #555;
+            border-radius: 10px;
+            right: 0;
+            bottom: 0;
+            box-shadow: inset -3px -3px 8px rgba(0, 0, 0, 0.9), 0 5px 15px rgba(0, 0, 0, 0.7);
+        }
+        
+        .gun-grip {
+            position: absolute;
+            width: 35px;
+            height: 80px;
+            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 2px solid #444;
+            right: 15px;
+            bottom: 5px;
+            border-radius: 5px;
+            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .gun-grip::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 60px;
+            background: repeating-linear-gradient(90deg, #2a2a2a 0px, #2a2a2a 2px, #1a1a1a 2px, #1a1a1a 4px);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .gun-trigger {
+            position: absolute;
+            width: 8px;
+            height: 25px;
+            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
+            right: 35px;
+            bottom: 25px;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+        
+        .gun-scope {
+            position: absolute;
+            width: 50px;
+            height: 40px;
+            background: radial-gradient(ellipse at center, #333, #111);
+            border: 2px solid #666;
+            top: -35px;
+            right: 45px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9), 0 0 10px rgba(100, 200, 255, 0.3);
+        }
+        
+        .gun-scope::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #0ff;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px #0ff;
+        }
+        
+        .gun-magazine {
+            position: absolute;
+            width: 20px;
+            height: 45px;
+            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
+            border: 1px solid #444;
+            right: 55px;
+            bottom: 10px;
+            border-radius: 2px;
+            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        @keyframes recoilAnim {
+            0% { transform: none; }
+            50% { transform: translateY(-8px); }
+            100% { transform: none; }
+        }
+        
+        .recoil {
+            animation: recoilAnim 0.1s ease-out;
+        }
+        
+        .crosshair {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            z-index: 140;
+            pointer-events: none;
+        }
+        
+        .crosshair::before {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 12px;
+            background: #00ff00;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            box-shadow: 0 0 5px #00ff00;
+        }
+        
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 2px;
+            background: #00ff00;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 5px #00ff00;
+        }
+        
+        .crosshair-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff00;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px #00ff00;
+        }
+        
+        .crosshair-corner {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border: 1px solid #00ff00;
+        }
+        
+        .crosshair-corner:nth-child(2) {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+        
+        .crosshair-corner:nth-child(3) {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+        }
+        
+        .crosshair-corner:nth-child(4) {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+        }
+        
+        .crosshair-corner:nth-child(5) {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+        
+        .muzzle-flash {
+            position: fixed;
+            width: 30px;
+            height: 40px;
+            background: radial-gradient(ellipse at center, #ffff00, #ff8800, transparent);
+            border-radius: 50%;
+            opacity: 0;
+            animation: muzzleFlash 0.1s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes muzzleFlash {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.5); }
+        }
+        
+        .hit-marker {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border: 2px solid #00ff00;
+            pointer-events: none;
+            animation: hitMarker 0.3s ease-out;
+        }
+        
+        @keyframes hitMarker {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.98);
+            padding: 50px;
+            border: 3px solid #00ff00;
+            text-align: center;
+            z-index: 200;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        }
+        
+        .game-over h2 {
+            color: #00ff00;
+            margin-bottom: 30px;
+            font-size: 40px;
+            text-shadow: 0 0 15px #00ff00;
+        }
+        
+        .game-over p {
+            color: #fff;
+            margin: 15px 0;
+            font-size: 20px;
+        }
+        
+        .game-over button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            margin-right: 10px;
+        }
+        
+        .game-over button:hover {
+            background: #00cc00;
+        }
+        
+        .level-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #00ff00;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff00;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="ui">
+            <div>LEVEL: <span id="level">1</span></div>
+            <div>TARGETS HIT: <span id="targetsHitCount">0</span></div>
+            <div>TIME: <span id="timer">30</span>s</div>
+        </div>
+        
+        <div class="crosshair" id="crosshair">
+            <div class="crosshair-dot"></div>
+            <div class="crosshair-corner"></div>
+            <div class="crosshair-corner"></div>
+            <div class="crosshair-corner"></div>
+            <div class="crosshair-corner"></div>
+        </div>
+        
+        <div class="menu" id="startMenu">
+            <h1>⚔ FPS REACTION ⚔</h1>
+            <p>Targets disappear after 3 seconds!</p>
+            <p>Use ARROW KEYS to move crosshair</p>
+            <p>Press SPACEBAR to shoot</p>
+            <br>
+            <button onclick="startGameNow()">START GAME</button>
+        </div>
+        
+        <div class="game-over hidden" id="gameOverScreen">
+            <h2 id="gameOverTitle">LEVEL COMPLETE!</h2>
+            <p>Targets Destroyed: <span id="finalTargets">0</span></p>
+            <p>Next Level: <span id="nextLevel">2</span></p>
+            <button onclick="startNextLevel()">CONTINUE</button>
+            <button onclick="backToMenu()">QUIT</button>
+        </div>
+        
+        <div class="level-indicator">
+            Targets vanish in: <span id="targetTimer">3.0</span>s
+        </div>
+        
+        <div class="gun">
+            <div class="gun-scope"></div>
+            <div class="gun-barrel"></div>
+            <div class="gun-magazine"></div>
+            <div class="gun-body">
+                <div class="gun-trigger"></div>
+                <div class="gun-grip"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.querySelector('.game-container');
+        const startMenu = document.getElementById('startMenu');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const gun = document.querySelector('.gun');
+        const crosshair = document.getElementById('crosshair');
+        
+        let gameActive = false;
+        let timerStarted = false;
+        let currentLevel = 1;
+        let gameTime = 30;
+        let levelTime = 30;
+        let targetsHitThisLevel = 0;
+        let targetGoal = 10;
+        let currentTarget = null;
+        let currentBomb = null;
+        let lastTargetX = window.innerWidth / 2;
+        let lastTargetY = window.innerHeight / 2;
+        let gameTimer = null;
+        let targetTimer = null;
+        let bombSpawnTimer = null;
+        let canShoot = true;
+        let crosshairX = window.innerWidth / 2;
+        let crosshairY = window.innerHeight / 2;
+        const moveSpeed = 15;
+        let targetVanishTime = 3;
+        const TARGET_RADIUS = 30; // Half of target width (60px)
+
+        function getLevelData(level) {
+            return {
+                targetGoal: 10 + (level - 1) * 10,
+                timeLimit: 18 + (level - 1) * 9
+            };
+        }
+
+        function updateCrosshairPosition() {
+            crosshair.style.left = (crosshairX - 20) + 'px';
+            crosshair.style.top = (crosshairY - 20) + 'px';
+        }
+
+        function updateUI() {
+            document.getElementById('level').textContent = currentLevel;
+            document.getElementById('targetsHitCount').textContent = targetsHitThisLevel;
+            document.getElementById('timer').textContent = gameTime;
+        }
+
+        function startGameNow() {
+            currentLevel = 1;
+            startLevel();
+        }
+
+        function startLevel() {
+            console.log('Starting level ' + currentLevel);
+            const levelData = getLevelData(currentLevel);
+            targetGoal = levelData.targetGoal;
+            levelTime = levelData.timeLimit;
+            gameTime = levelTime;
+            targetsHitThisLevel = 0;
+            gameActive = true;
+            timerStarted = false;
+            
+            startMenu.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            
+            updateUI();
+            spawnTarget();
+            spawnBomb();
+        }
+
+        function endLevel() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            clearInterval(targetTimer);
+            clearInterval(bombSpawnTimer);
+            
+            if (currentTarget) {
+                currentTarget.remove();
+                currentTarget = null;
+            }
+            
+            if (currentBomb) {
+                currentBomb.remove();
+                currentBomb = null;
+            }
+            
+            document.getElementById('finalTargets').textContent = targetsHitThisLevel;
+            
+            if (targetsHitThisLevel >= targetGoal) {
+                document.getElementById('gameOverTitle').textContent = 'LEVEL COMPLETE!';
+                document.getElementById('gameOverTitle').style.color = '#00ff00';
+                document.getElementById('nextLevel').textContent = currentLevel + 1;
+            } else {
+                document.getElementById('gameOverTitle').textContent = 'MISSION FAILED!';
+                document.getElementById('gameOverTitle').style.color = '#ff0000';
+            }
+            
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function startNextLevel() {
+            if (targetsHitThisLevel >= targetGoal) {
+                currentLevel++;
+                startLevel();
+            } else {
+                backToMenu();
+            }
+        }
+
+        function backToMenu() {
+            startMenu.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+            if (gameTimer) clearInterval(gameTimer);
+            if (targetTimer) clearInterval(targetTimer);
+            gameActive = false;
+        }
+
+        function spawnTarget() {
+            if (!gameActive) return;
+            
+            if (currentTarget) {
+                currentTarget.remove();
+            }
+            
+            const target = document.createElement('div');
+            target.className = 'target target-pulse';
+            
+            let x, y;
+            let validPosition = false;
+            let attempts = 0;
+            const minDistanceRadius = TARGET_RADIUS * 16; // 8 radius away (30 * 16 = 480px)
+            const minHorizontalDiff = 250; // Minimum horizontal difference to avoid same height
+            const minVerticalDiff = 250; // Minimum vertical difference to avoid same level
+            
+            while (!validPosition && attempts < 50) {
+                attempts++;
+                const maxX = window.innerWidth - 100;
+                const maxY = window.innerHeight - 150;
+                
+                x = Math.random() * (maxX - 100) + 100;
+                y = Math.random() * (maxY - 150) + 100;
+                
+                // Calculate straight-line distance (Euclidean)
+                const distance = Math.sqrt(Math.pow(x - lastTargetX, 2) + Math.pow(y - lastTargetY, 2));
+                
+                // Get differences
+                const horizontalDiff = Math.abs(x - lastTargetX);
+                const verticalDiff = Math.abs(y - lastTargetY);
+                
+                // Must be 8 radius away AND not on same horizontal/vertical level
+                if (distance > minDistanceRadius && horizontalDiff > minHorizontalDiff && verticalDiff > minVerticalDiff) {
+                    validPosition = true;
+                }
+            }
+            
+            target.style.left = x + 'px';
+            target.style.top = y + 'px';
+            
+            gameContainer.appendChild(target);
+            currentTarget = target;
+            lastTargetX = x;
+            lastTargetY = y;
+            targetVanishTime = 3;
+            
+            clearInterval(targetTimer);
+            startTargetVanishTimer();
+        }
+
+        function startTargetVanishTimer() {
+            targetTimer = setInterval(() => {
+                targetVanishTime -= 0.1;
+                document.getElementById('targetTimer').textContent = targetVanishTime.toFixed(1);
+                
+                if (targetVanishTime <= 0) {
+                    clearInterval(targetTimer);
+                    if (currentTarget && gameActive) {
+                        currentTarget.classList.add('target-fading');
+                        setTimeout(() => {
+                            if (currentTarget) currentTarget.remove();
+                            currentTarget = null;
+                            if (gameActive) spawnTarget();
+                        }, 500);
+                    }
+                }
+            }, 100);
+        }
+
+        function shoot(x, y) {
+            if (!gameActive) return;
+            
+            canShoot = false;
+            
+            gun.classList.add('recoil');
+            setTimeout(() => gun.classList.remove('recoil'), 100);
+            
+            createMuzzleFlash();
+            
+            // Check if hit bomb
+            if (currentBomb) {
+                const rect = currentBomb.getBoundingClientRect();
+                const bombCenterX = rect.left + rect.width / 2;
+                const bombCenterY = rect.top + rect.height / 2;
+                
+                const distance = Math.sqrt(Math.pow(x - bombCenterX, 2) + Math.pow(y - bombCenterY, 2));
+                
+                if (distance < 50) {
+                    // Hit bomb - lose immediately
+                    document.getElementById('gameOverTitle').textContent = '💣 HIT BOMB! 💣';
+                    document.getElementById('gameOverTitle').style.color = '#ff0000';
+                    endLevel();
+                    return;
+                }
+            }
+            
+            if (currentTarget) {
+                const rect = currentTarget.getBoundingClientRect();
+                const targetCenterX = rect.left + rect.width / 2;
+                const targetCenterY = rect.top + rect.height / 2;
+                
+                const distance = Math.sqrt(Math.pow(x - targetCenterX, 2) + Math.pow(y - targetCenterY, 2));
+                
+                if (distance < 50) {
+                    hitTarget();
+                } else {
+                    createHitMarker(x, y);
+                }
+            } else {
+                createHitMarker(x, y);
+            }
+            
+            setTimeout(() => canShoot = true, 50);
+        }
+
+        function createMuzzleFlash() {
+            const flash = document.createElement('div');
+            flash.className = 'muzzle-flash';
+            flash.style.left = (window.innerWidth - 80) + 'px';
+            flash.style.top = (window.innerHeight - 80) + 'px';
+            gameContainer.appendChild(flash);
+            setTimeout(() => flash.remove(), 100);
+        }
+
+        function hitTarget() {
+            targetsHitThisLevel++;
+            updateUI();
+            createHitMarker(crosshairX, crosshairY);
+            
+            if (targetsHitThisLevel >= targetGoal) {
+                endLevel();
+            } else {
+                spawnTarget();
+            }
+        }
+
+        function createHitMarker(x, y) {
+            const marker = document.createElement('div');
+            marker.className = 'hit-marker';
+            marker.style.left = (x - 15) + 'px';
+            marker.style.top = (y - 15) + 'px';
+            gameContainer.appendChild(marker);
+            setTimeout(() => marker.remove(), 300);
+        }
+
+        function spawnBomb() {
+            if (!gameActive) return;
+            
+            clearInterval(bombSpawnTimer);
+            
+            // Spawn bomb after 2-4 seconds
+            const spawnDelay = Math.random() * 2000 + 2000;
+            
+            bombSpawnTimer = setTimeout(() => {
+                if (!gameActive) return;
+                
+                if (currentBomb) {
+                    currentBomb.remove();
+                }
+                
+                const bomb = document.createElement('div');
+                bomb.className = 'bomb';
+                
+                let bombX, bombY;
+                let validPosition = false;
+                let attempts = 0;
+                
+                while (!validPosition && attempts < 50) {
+                    attempts++;
+                    bombX = Math.random() * (window.innerWidth - 100) + 50;
+                    bombY = Math.random() * (window.innerHeight - 150) + 50;
+                    
+                    // Ensure bomb is not too close to current target
+                    if (currentTarget) {
+                        const rect = currentTarget.getBoundingClientRect();
+                        const targetCenterX = rect.left + rect.width / 2;
+                        const targetCenterY = rect.top + rect.height / 2;
+                        const distance = Math.sqrt(Math.pow(bombX - targetCenterX, 2) + Math.pow(bombY - targetCenterY, 2));
+                        if (distance > 150) validPosition = true;
+                    } else {
+                        validPosition = true;
+                    }
+                }
+                
+                bomb.style.left = bombX + 'px';
+                bomb.style.top = bombY + 'px';
+                
+                gameContainer.appendChild(bomb);
+                currentBomb = bomb;
+                
+                // Spawn next bomb after this one
+                spawnBomb();
+            }, spawnDelay);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            // Start timer on first arrow key press
+            if (!timerStarted && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+                timerStarted = true;
+                gameTimer = setInterval(() => {
+                    gameTime--;
+                    updateUI();
+                    
+                    if (gameTime <= 0) {
+                        endLevel();
+                    }
+                }, 1000);
+            }
+            
+            if (e.code === 'ArrowUp') {
+                e.preventDefault();
+                crosshairY = Math.max(0, crosshairY - moveSpeed);
+                updateCrosshairPosition();
+            } else if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                crosshairY = Math.min(window.innerHeight, crosshairY + moveSpeed);
+                updateCrosshairPosition();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                crosshairX = Math.max(0, crosshairX - moveSpeed);
+                updateCrosshairPosition();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                crosshairX = Math.min(window.innerWidth, crosshairX + moveSpeed);
+                updateCrosshairPosition();
+            } else if (e.code === 'Space') {
+                e.preventDefault();
+                if (canShoot) {
+                    shoot(crosshairX, crosshairY);
+                }
+            }
+        });
+
+        updateCrosshairPosition();
+    </script>
+</body>
+</html>
