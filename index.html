@@ -46,6 +46,11 @@
     .badge{background:#001b0f;padding:6px 8px;border-radius:8px}
     .skin-preview{width:30px;height:20px;border-radius:6px;border:2px solid #000}
     .small-muted{font-size:12px;color:#aaccbb}
+
+    /* Rocket visuals */
+    .rocket{position:fixed;width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#ffd24d,#ff7b2b);z-index:220;pointer-events:none;box-shadow:0 0 12px rgba(255,140,0,0.9)}
+    .explosion{position:fixed;width:160px;height:160px;border-radius:50%;pointer-events:none;z-index:230;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff3b0 0%,rgba(255,110,30,0.8) 30%,rgba(255,60,0,0.5) 60%,transparent 61%);filter:blur(2px);opacity:0.95}
+    .small-explosion{width:100px;height:100px}
 </style>
 </head>
 <body>
@@ -77,7 +82,7 @@
     <div class="menu" id="startMenu">
         <h1>⚔ FPS REACTION — ALL FEATURES</h1>
         <p>Move crosshair with ARROW KEYS. Shoot with SPACEBAR. Avoid bombs.</p>
-        <p>Shotgun has extended hit radius. Some levels spawn multiple targets quickly.</p>
+        <p>Rocket Launcher hits a wide area — be careful with bombs!</p>
         <p>Unlock guns & skins in the shop. Headshots = bonus coins & XP.</p>
         <button onclick="startGameNow()">START GAME</button>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
@@ -165,7 +170,8 @@ let equippedSkin = localStorage.getItem('fr_equippedSkin') || 'Classic';
 const WEAPONS = {
     pistol:{name:'Pistol',cost:0,shots:1,hitRadius:50,fireDelay:120,skinable:true},
     machinegun:{name:'Machine Gun',cost:150,shots:3,hitRadius:50,fireDelay:120,skinable:true},
-    shotgun:{name:'Shotgun',cost:300,shots:2,hitRadius:TARGET_RADIUS*2 /* shotgun 2x radius */,fireDelay:220,skinable:true},
+    // Replaced shotgun with Rocket Launcher: single projectile, large splash area
+    rocket:{name:'Rocket Launcher',cost:300,shots:1,hitRadius:24/* direct hit radius */,fireDelay:900,splashRadius:120,oneShotKill:false,skinable:true},
     sniper:{name:'Sniper',cost:500,shots:1,hitRadius:30,fireDelay:350,oneShotKill:true,skinable:true}
 };
 
@@ -251,6 +257,8 @@ function clearCurrentEntities(){
     if(currentBomb){ try{currentBomb.remove()}catch(e){} currentBomb = null; }
     document.querySelectorAll('.target').forEach(n=>n.remove());
     document.querySelectorAll('.bomb').forEach(n=>n.remove());
+    document.querySelectorAll('.rocket').forEach(n=>n.remove());
+    document.querySelectorAll('.explosion').forEach(n=>n.remove());
 }
 
 function spawnTargetsBatch(config){
@@ -290,14 +298,9 @@ function spawnSingleTarget(config){
 
     // lifetime before vanish
     const vanish = targetVanishTime * 1000;
-    const vanishTimeout = setTimeout(()=>{
-        if(target) {
-            target.classList.add('target-fading');
-            try{target.remove()}catch(e){}
-        }
-    }, vanish);
+    const vanishTimeout = setTimeout(()=>{ if(target) { try{target.remove()}catch(e){} } }, vanish);
 
-    // click handler is replaced by keyboard shooting; but allow clicking for convenience
+    // center coordinates for hit checks
     target.dataset.centerX = x + 30;
     target.dataset.centerY = y + 30;
     target.dataset.spawnedAt = Date.now();
@@ -337,9 +340,7 @@ function spawnBomb(){
     document.body.appendChild(bomb);
     currentBomb = bomb;
     // bomb disappears after 2.4s
-    setTimeout(()=>{
-        if(currentBomb){ try{currentBomb.remove()}catch(e){} currentBomb = null; if(levelActive) { /* next bombs spawn naturally */ } }
-    }, 2400);
+    setTimeout(()=>{ if(currentBomb){ try{currentBomb.remove()}catch(e){} currentBomb = null; if(levelActive) { /* next bombs spawn naturally */ } } }, 2400);
 }
 
 /* ===========================
@@ -354,7 +355,16 @@ function shootAt(x,y){
     document.getElementById('gunBody').classList.add('recoil');
     setTimeout(()=>document.getElementById('gunBody').classList.remove('recoil'), 120);
 
-    // fire multiple shots (for machinegun/shotgun)
+    // For Rocket Launcher, fire a projectile that travels and then explodes (splash)
+    if(equippedGun === 'rocket'){
+        // play rocket sound (we'll reuse playGunshot then explosion)
+        playGunshot();
+        fireRocketTowards(x,y, weapon);
+        setTimeout(()=>{ canShoot = true; }, weapon.fireDelay);
+        return;
+    }
+
+    // fire multiple shots (for machinegun)
     for(let s=0;s<weapon.shots;s++){
         setTimeout(()=>{
             // check bombs first - get bombs on screen
@@ -385,7 +395,7 @@ function shootAt(x,y){
                     const isHead = dist <= 12;
                     hitAny = true;
                     handleTargetHit(t, isHead);
-                    // shotgun and machinegun can hit multiple; pistol/sniper only first
+                    // pistol/sniper only first
                     if(equippedGun === 'pistol' || equippedGun === 'sniper') { break; }
                 }
             }
@@ -398,29 +408,121 @@ function shootAt(x,y){
     setTimeout(()=>{ canShoot = true; }, weapon.fireDelay);
 }
 
+/* Rocket behavior */
+function fireRocketTowards(destX, destY, weapon){
+    const rocket = document.createElement('div');
+    rocket.className = 'rocket';
+    // start from gun muzzle approx
+    const startX = window.innerWidth - 120 + 12; // align with muzzle
+    const startY = window.innerHeight - 160 + 12;
+    rocket.style.left = startX + 'px';
+    rocket.style.top = startY + 'px';
+    document.body.appendChild(rocket);
+
+    // animate rocket linearly towards destination
+    const duration = 500; // ms travel time
+    const start = performance.now();
+    const sx = startX, sy = startY, ex = destX, ey = destY;
+
+    function step(now){
+        const t = Math.min(1, (now - start) / duration);
+        const cx = sx + (ex - sx) * t;
+        const cy = sy + (ey - sy) * t;
+        rocket.style.left = cx + 'px';
+        rocket.style.top = cy + 'px';
+        // small rotation toward direction
+        const angle = Math.atan2(ey - sy, ex - sx) * 180 / Math.PI;
+        rocket.style.transform = `rotate(${angle}deg)`;
+        if(t < 1 && document.body.contains(rocket) && levelActive){
+            requestAnimationFrame(step);
+        } else {
+            // impact
+            createExplosionAt(ex, ey, weapon.splashRadius || 100);
+            try{ rocket.remove(); }catch(e){}
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+function createExplosionAt(x,y, radius){
+    // create visual explosion
+    const exp = document.createElement('div');
+    exp.className = 'explosion';
+    exp.style.left = x + 'px';
+    exp.style.top = y + 'px';
+    exp.style.width = (radius*2) + 'px';
+    exp.style.height = (radius*2) + 'px';
+    exp.style.marginLeft = -(radius) + 'px';
+    exp.style.marginTop = -(radius) + 'px';
+    document.body.appendChild(exp);
+    // small screen shake (translate body)
+    document.body.style.transform = 'translateY(-6px)';
+    setTimeout(()=>{ document.body.style.transform = ''; }, 120);
+
+    // play explosion sound
+    playBombExplosion();
+
+    // check for bombs in explosion range -> hitting bomb is still failure
+    const bombs = Array.from(document.querySelectorAll('.bomb'));
+    for(const b of bombs){
+        const r = b.getBoundingClientRect();
+        const centerX = r.left + r.width/2;
+        const centerY = r.top + r.height/2;
+        if(Math.hypot(centerX - x, centerY - y) <= radius){
+            levelFailWithMessage('💥 Explosion hit a bomb!');
+            setTimeout(()=>{ try{ exp.remove(); }catch(e){} }, 350);
+            return;
+        }
+    }
+
+    // check targets within radius and apply hits
+    const targets = Array.from(document.querySelectorAll('.target'));
+    let anyHit = false;
+    for(const t of targets){
+        const r = t.getBoundingClientRect();
+        const centerX = r.left + r.width/2;
+        const centerY = r.top + r.height/2;
+        const dist = Math.hypot(centerX - x, centerY - y);
+        if(dist <= radius){
+            anyHit = true;
+            // treat as full hit; headshot if very close to center of explosion
+            const isHead = dist <= 20;
+            handleTargetHit(t, isHead, /*fromExplosion=*/true);
+        }
+    }
+
+    // keep explosion for a moment then remove
+    setTimeout(()=>{ try{ exp.remove(); }catch(e){} }, 300);
+}
+
 /* ===========================
    Target hit consequences
    =========================== */
-function handleTargetHit(targetEl, headshot=false){
+function handleTargetHit(targetEl, headshot=false, fromExplosion=false){
     // visual + coins + xp + remove
     try{ targetEl.remove(); }catch(e){}
     targetsHitThisLevel++;
-    // base coins
+    // base coins & xp (balanced)
     let coinsGained = 10;
     let xpGain = 6;
     if(headshot){
-        coinsGained += 8; // bonus
-        xpGain += 6;
-        // small special sound
+        coinsGained += 20; // rocket/explosion headshot still gives a larger bonus
+        xpGain += 14;
         playHeadshotSound();
     } else {
         playHitSound();
     }
     // sniper instant kill + bonus
-    if(equippedGun === 'sniper'){
+    if(equippedGun === 'sniper' && !fromExplosion){
         coinsGained += 12;
         xpGain += 8;
         playSniperPing();
+    }
+    // rocket direct/splash bonuses
+    if(equippedGun === 'rocket'){
+        // explosion gives slightly more coins per target
+        coinsGained += 6;
+        xpGain += 4;
     }
     totalCoins += coinsGained;
     totalXP += xpGain;
@@ -430,9 +532,6 @@ function handleTargetHit(targetEl, headshot=false){
     if(targetsHitThisLevel >= targetGoal){
         // level completed
         setTimeout(()=>endLevel(true), 250);
-    } else {
-        // optionally spawn more to keep pace (fast pace)
-        // spawnSingleTarget(getLevelData(currentLevel));  // already handled by spawn interval
     }
 }
 
@@ -536,7 +635,7 @@ function buildShopUI(){
         item.className = 'gun-item';
         const meta = document.createElement('div'); meta.className='meta';
         meta.innerHTML = `<div style="font-weight:800">${w.name} <span class="small-muted">(${w.shots} shots)</span></div>
-                          <div class="small-muted">Hit range: ${Math.round(w.hitRadius)}px</div>
+                          <div class="small-muted">Hit range: ${Math.round(w.hitRadius)}px ${w.splashRadius ? '• Splash: ' + w.splashRadius + 'px' : ''}</div>
                           <div class="small-muted">Fire delay: ${w.fireDelay}ms</div>`;
         const actions = document.createElement('div');
         // buy vs select
