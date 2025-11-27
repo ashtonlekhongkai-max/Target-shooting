@@ -1,1216 +1,815 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPS Reaction Game</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        html, body {
-            width: 100%;
-            height: 100%;
-            background: #000;
-            font-family: Arial, sans-serif;
-            cursor: none;
-            overflow: hidden;
-        }
-        
-        .game-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            overflow: hidden;
-        }
-        
-        .ui {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            color: #00ff00;
-            font-size: 20px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #00ff00;
-            z-index: 100;
-        }
-        
-        .menu {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            padding: 50px;
-            border: 3px solid #00ff00;
-            text-align: center;
-            z-index: 200;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-        }
-        
-        .menu h1 {
-            color: #00ff00;
-            margin-bottom: 20px;
-            font-size: 48px;
-            text-shadow: 0 0 15px #00ff00;
-        }
-        
-        .menu p {
-            color: #fff;
-            margin: 15px 0;
-            font-size: 16px;
-        }
-        
-        .menu button {
-            margin-top: 10px; /* moved closer to text */
-            padding: 15px 40px;
-            font-size: 18px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        
-        .menu button:hover {
-            background: #00cc00;
-            transform: scale(1.05);
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .target {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            background: radial-gradient(circle at 30% 30%, #ff3333, #990000);
-            border: 3px solid #ff6666;
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5);
-            z-index: 50;
-        }
-        
-        .target::before {
-            content: '';
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: #ffff00;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px #ffff00;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
-            50% { box-shadow: 0 0 30px rgba(255, 0, 0, 1), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
-        }
-        
-        @keyframes bombPulse {
-            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
-            50% { box-shadow: 0 0 30px rgba(255, 0, 0, 1), inset -2px -2px 10px rgba(0, 0, 0, 0.5); }
-        }
-        
-        @keyframes sparkFlicker {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
-        }
-        
-        .bomb {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            background: radial-gradient(circle at 30% 30%, #ff3333, #990000);
-            border: 3px solid #ff6666;
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.9), inset -2px -2px 10px rgba(0, 0, 0, 0.5);
-            z-index: 50;
-            animation: bombPulse 0.5s infinite;
-        }
-        
-        .bomb::before {
-            content: '';
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: #ffff00;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px #ffff00;
-        }
-        
-        .bomb::after {
-            content: '';
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: #ffaa00;
-            border-radius: 50%;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 0 6px #ffaa00;
-            animation: sparkFlicker 0.6s infinite;
-        }
-        
-        .target-pulse {
-            animation: pulse 0.5s infinite;
-        }
-        
-        .target-fading {
-            animation: fadeOut 0.5s ease-out forwards;
-        }
-        
-        .gun {
-            position: fixed;
-            bottom: 20px;
-            right: 30px;
-            width: 140px;
-            height: 120px;
-            z-index: 150;
-        }
-        
-        .gun-barrel {
-            position: absolute;
-            width: 80px;
-            height: 18px;
-            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
-            border: 2px solid #444;
-            top: 15px;
-            right: 50px;
-            border-radius: 10px;
-            box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 200, 0, 0.4);
-        }
-        
-        .gun-barrel::after {
-            content: '';
-            position: absolute;
-            width: 15px;
-            height: 12px;
-            background: radial-gradient(ellipse at center, #444, #222);
-            right: -12px;
-            top: 3px;
-            border-radius: 50%;
-            box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
-        }
-        
-        .gun-body {
-            position: absolute;
-            width: 100px;
-            height: 110px;
-            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #3a3a3a 100%);
-            border: 2px solid #555;
-            border-radius: 10px;
-            right: 0;
-            bottom: 0;
-            box-shadow: inset -3px -3px 8px rgba(0, 0, 0, 0.9), 0 5px 15px rgba(0, 0, 0, 0.7);
-        }
-        
-        .gun-grip {
-            position: absolute;
-            width: 35px;
-            height: 80px;
-            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
-            border: 2px solid #444;
-            right: 15px;
-            bottom: 5px;
-            border-radius: 5px;
-            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.8);
-        }
-        
-        .gun-grip::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 60px;
-            background: repeating-linear-gradient(90deg, #2a2a2a 0px, #2a2a2a 2px, #1a1a1a 2px, #1a1a1a 4px);
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        .gun-trigger {
-            position: absolute;
-            width: 8px;
-            height: 25px;
-            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
-            right: 35px;
-            bottom: 25px;
-            border: 1px solid #333;
-            border-radius: 3px;
-        }
-        
-        .gun-scope {
-            position: absolute;
-            width: 50px;
-            height: 40px;
-            background: radial-gradient(ellipse at center, #333, #111);
-            border: 2px solid #666;
-            top: -35px;
-            right: 45px;
-            border-radius: 5px;
-            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9), 0 0 10px rgba(100, 200, 255, 0.3);
-        }
-        
-        .gun-scope::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 1px solid #0ff;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 5px #0ff;
-        }
-        
-        .gun-magazine {
-            position: absolute;
-            width: 20px;
-            height: 45px;
-            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
-            border: 1px solid #444;
-            right: 55px;
-            bottom: 10px;
-            border-radius: 2px;
-            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.8);
-        }
-        
-        @keyframes recoilAnim {
-            0% { transform: none; }
-            50% { transform: translateY(-8px); }
-            100% { transform: none; }
-        }
-        
-        .recoil {
-            animation: recoilAnim 0.1s ease-out;
-        }
-        
-        .crosshair {
-            position: fixed;
-            width: 40px;
-            height: 40px;
-            z-index: 140;
-            pointer-events: none;
-        }
-        
-        .crosshair-center {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: #00ff00;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 3px #00ff00;
-        }
-        
-        .crosshair-top {
-            position: absolute;
-            width: 2px;
-            height: 12px;
-            background: #00ff00;
-            left: 50%;
-            top: 2px;
-            transform: translateX(-50%);
-            box-shadow: 0 0 3px #00ff00;
-        }
-        
-        .crosshair-bottom {
-            position: absolute;
-            width: 2px;
-            height: 12px;
-            background: #00ff00;
-            left: 50%;
-            bottom: 2px;
-            transform: translateX(-50%);
-            box-shadow: 0 0 3px #00ff00;
-        }
-        
-        .crosshair-left {
-            position: absolute;
-            width: 12px;
-            height: 2px;
-            background: #00ff00;
-            left: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-            box-shadow: 0 0 3px #00ff00;
-        }
-        
-        .crosshair-right {
-            position: absolute;
-            width: 12px;
-            height: 2px;
-            background: #00ff00;
-            right: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-            box-shadow: 0 0 3px #00ff00;
-        }
-        
-        .muzzle-flash {
-            position: fixed;
-            width: 30px;
-            height: 40px;
-            background: radial-gradient(ellipse at center, #ffff00, #ff8800, transparent);
-            border-radius: 50%;
-            opacity: 0;
-            animation: muzzleFlash 0.1s ease-out;
-            pointer-events: none;
-        }
-        
-        @keyframes muzzleFlash {
-            0% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(0.5); }
-        }
-        
-        .hit-marker {
-            position: fixed;
-            width: 30px;
-            height: 30px;
-            border: 2px solid #00ff00;
-            pointer-events: none;
-            animation: hitMarker 0.3s ease-out;
-        }
-        
-        @keyframes hitMarker {
-            0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
-        }
-        
-        .game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.98);
-            padding: 50px;
-            border: 3px solid #00ff00;
-            text-align: center;
-            z-index: 200;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-        }
-        
-        .game-over h2 {
-            color: #00ff00;
-            margin-bottom: 30px;
-            font-size: 40px;
-            text-shadow: 0 0 15px #00ff00;
-        }
-        
-        .game-over p {
-            color: #fff;
-            margin: 15px 0;
-            font-size: 20px;
-        }
-        
-        .game-over button {
-            margin-top: 30px;
-            padding: 15px 40px;
-            font-size: 18px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            margin-right: 10px;
-        }
-        
-        .game-over button:hover {
-            background: #00cc00;
-        }
-        
-        .shop-screen {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.98);
-            padding: 40px;
-            border: 3px solid #00ff00;
-            text-align: center;
-            z-index: 200;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .shop-screen h2 {
-            color: #00ff00;
-            margin-bottom: 20px;
-            font-size: 36px;
-            text-shadow: 0 0 15px #00ff00;
-        }
-        
-        .coins-display {
-            color: #ffff00;
-            font-size: 24px;
-            margin-bottom: 30px;
-            text-shadow: 0 0 10px #ffff00;
-        }
-        
-        .gun-item {
-            background: rgba(50, 50, 50, 0.8);
-            border: 2px solid #00ff00;
-            padding: 20px;
-            margin: 15px 0;
-            border-radius: 5px;
-            color: #fff;
-        }
-        
-        .gun-item h3 {
-            color: #00ff00;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-        
-        .gun-item p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        
-        .gun-item button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 14px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            margin-right: 10px;
-        }
-        
-        .gun-item button:hover {
-            background: #00cc00;
-        }
-        
-        .gun-item button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-        
-        .gun-item.selected {
-            border-color: #ffff00;
-            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
-        }
-        
-        .shop-button {
-            margin-top: 30px;
-            padding: 15px 40px;
-            font-size: 18px;
-            background: #00ff00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        
-        .shop-button:hover {
-            background: #00cc00;
-        }
-        
-        .level-indicator {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            color: #00ff00;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #00ff00;
-            z-index: 100;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FPS Reaction — All Together</title>
+<style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#071021;color:#fff;font-family:Inter,Arial,sans-serif;overflow:hidden;cursor:none}
+    .game-container{position:fixed;inset:0;background:linear-gradient(180deg,#10203a 0%,#071021 100%)}
+    .ui{position:fixed;top:14px;left:14px;right:14px;display:flex;gap:12px;justify-content:space-between;z-index:120}
+    .ui div{background:rgba(0,0,0,0.45);padding:8px 12px;border-radius:8px;border:1px solid rgba(0,255,128,0.08);font-weight:600}
+    .ui .left{display:flex;gap:10px;align-items:center}
+    .menu, .game-over, .shop-screen{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.92);padding:28px;border:3px solid #00ff66;border-radius:12px;z-index:250;box-shadow:0 0 40px rgba(0,255,102,0.08);max-width:92vw}
+    .menu h1{font-size:44px;color:#00ff66;margin-bottom:8px;text-shadow:0 0 12px rgba(0,255,102,0.15)}
+    .menu p{color:#dfefff;margin:6px 0}
+    .menu button, .shop-button, .game-over button{background:#00ff66;border:none;padding:12px 18px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:10px}
+    .menu button:hover,.shop-button:hover,.game-over button:hover{transform:scale(1.03);background:#00e656}
+    .hidden{display:none!important}
+    .target, .bomb{position:fixed;width:60px;height:60px;border-radius:50%;z-index:90;pointer-events:auto;display:flex;align-items:center;justify-content:center}
+    .target{background:radial-gradient(circle at 30% 30%,#ff6666,#990000);border:3px solid #ff9b9b;box-shadow:0 0 20px rgba(255,0,0,0.8),inset -2px -2px 8px rgba(0,0,0,0.5)}
+    .target .inner{width:14px;height:14px;border-radius:50%;background:#ffff66;box-shadow:0 0 10px #ffff66}
+    .bomb{background:radial-gradient(circle at 30% 30%,#ff3333,#990000);border:3px solid #ff6666;box-shadow:0 0 28px rgba(255,0,0,0.9)}
+    .bomb::after{content:'';position:absolute;top:-10px;width:8px;height:8px;background:#ffaa00;border-radius:50%;box-shadow:0 0 8px #ffaa00}
+    .gun{position:fixed;right:26px;bottom:20px;width:170px;height:140px;z-index:200;pointer-events:none}
+    .gun-body{position:absolute;right:0;bottom:0;width:120px;height:120px;background:linear-gradient(135deg,#222,#111);border-radius:10px;box-shadow:inset -6px -6px 14px rgba(0,0,0,0.9)}
+    .recoil{animation:recoilAnim 120ms ease-out}
+    @keyframes recoilAnim{0%{transform:none}50%{transform:translateY(-10px)}100%{transform:none}}
+    .crosshair{position:fixed;width:40px;height:40px;z-index:210;pointer-events:none}
+    .crosshair div{position:absolute;background:#00ff66;box-shadow:0 0 8px #00ff66}
+    .crosshair .center{width:3px;height:3px;left:50%;top:50%;transform:translate(-50%,-50%)}
+    .crosshair .vline{width:2px;height:10px;left:50%;transform:translateX(-50%)}
+    .crosshair .hline{height:2px;width:10px;top:50%;transform:translateY(-50%)}
+    .muzzle-flash{position:fixed;width:36px;height:44px;border-radius:50%;pointer-events:none;z-index:205;background:radial-gradient(ellipse at center,#fff29b,#ff8a00,transparent)}
+    .hit-marker{position:fixed;width:30px;height:30px;border:2px solid #00ff66;border-radius:8px;pointer-events:none;z-index:205;animation:hitMarker 300ms ease-out}
+    @keyframes hitMarker{0%{transform:scale(0.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
+    .target-pulse{animation:targetPulse 800ms infinite ease-in-out}
+    @keyframes targetPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    .game-info{display:flex;gap:10px;align-items:center}
+    .shop-list{max-height:55vh;overflow:auto;margin-top:10px;display:flex;flex-direction:column;gap:10px}
+    .gun-item{background:rgba(255,255,255,0.03);border:2px solid rgba(0,255,102,0.06);padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+    .gun-item .meta{display:flex;flex-direction:column;gap:4px}
+    .selected-badge{background:#ffff66;color:#000;padding:6px;border-radius:8px;font-weight:800;margin-left:8px}
+    .level-indicator{position:fixed;left:14px;bottom:18px;color:#00ff66;font-weight:700;text-shadow:0 0 8px rgba(0,255,102,0.08);z-index:120}
+    .leaderboard{margin-top:10px;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px}
+    .badge{background:#001b0f;padding:6px 8px;border-radius:8px}
+    .skin-preview{width:30px;height:20px;border-radius:6px;border:2px solid #000}
+    .small-muted{font-size:12px;color:#aaccbb}
+</style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="ui">
-            <div>LEVEL: <span id="level">1</span></div>
-            <div>TARGETS HIT: <span id="targetsHitCount">0</span></div>
-            <div>TIME: <span id="timer">30</span>s</div>
-            <div>💰 COINS: <span id="uiCoins">0</span></div>
+<div class="game-container">
+    <div class="ui">
+        <div class="left">
+            <div>LEVEL: <span id="levelDisplay">1</span></div>
+            <div>TIME: <span id="timerDisplay">30</span>s</div>
+            <div>TARGETS: <span id="targetsHitCount">0</span>/<span id="targetGoalDisplay">10</span></div>
         </div>
-        
-        <div class="crosshair" id="crosshair">
-            <div class="crosshair-center"></div>
-            <div class="crosshair-top"></div>
-            <div class="crosshair-bottom"></div>
-            <div class="crosshair-left"></div>
-            <div class="crosshair-right"></div>
+        <div class="game-info">
+            <div>💰 <span id="uiCoins">0</span></div>
+            <div>⭐ XP: <span id="uiXP">0</span></div>
+            <div class="badge" id="equippedBadge">Pistol</div>
+            <div style="margin-left:8px" class="small-muted">Skin: <span id="equippedSkin">Classic</span></div>
         </div>
-        
-        <div class="menu" id="startMenu">
-            <h1>⚔ FPS REACTION ⚔</h1>
-            <p>Targets disappear after 3 seconds!</p>
-            <p>Use ARROW KEYS to move crosshair</p>
-            <p>Press SPACEBAR to shoot</p>
-            <br>
-            <button onclick="startGameNow()">START GAME</button>
+    </div>
+
+    <!-- Crosshair -->
+    <div class="crosshair" id="crosshair">
+        <div class="center" style="left:50%;top:50%"></div>
+        <div class="vline" style="top:2px"></div>
+        <div class="vline" style="bottom:2px"></div>
+        <div class="hline" style="left:2px"></div>
+        <div class="hline" style="right:2px"></div>
+    </div>
+
+    <!-- Start Menu -->
+    <div class="menu" id="startMenu">
+        <h1>⚔ FPS REACTION — ALL FEATURES</h1>
+        <p>Move crosshair with ARROW KEYS. Shoot with SPACEBAR. Avoid bombs.</p>
+        <p>Shotgun has extended hit radius. Some levels spawn multiple targets quickly.</p>
+        <p>Unlock guns & skins in the shop. Headshots = bonus coins & XP.</p>
+        <button onclick="startGameNow()">START GAME</button>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
+            <button onclick="openShop()">OPEN SHOP</button>
+            <button onclick="showLeaderboard()">LEADERBOARD</button>
         </div>
-        
-        <div class="game-over hidden" id="gameOverScreen">
-            <h2 id="gameOverTitle">LEVEL COMPLETE!</h2>
-            <p>Targets Destroyed: <span id="finalTargets">0</span></p>
-            <p>Coins Earned: <span id="coinsEarned">100</span></p>
-            <p>Total Coins: <span id="totalCoins">0</span></p>
-            <p>Next Level: <span id="nextLevel">2</span></p>
+    </div>
+
+    <!-- Game Over / Level Complete -->
+    <div class="game-over hidden" id="gameOverScreen">
+        <h2 id="gameOverTitle">LEVEL COMPLETE!</h2>
+        <p>Targets Destroyed: <span id="finalTargets">0</span></p>
+        <p>Coins Earned: <span id="coinsEarned">0</span></p>
+        <p>Total Coins: <span id="totalCoins">0</span></p>
+        <p>Next Level: <span id="nextLevel">2</span></p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
             <button onclick="goToShop()">SHOP</button>
             <button onclick="startNextLevel()">CONTINUE</button>
             <button onclick="backToMenu()">QUIT</button>
         </div>
-        
-        <div class="shop-screen hidden" id="shopScreen">
-            <h2>🛍️ GUN SHOP 🛍️</h2>
-            <div class="coins-display">💰 Coins: <span id="shopCoins">0</span></div>
-            
-            <div class="gun-item" id="pistolItem">
-                <h3>PISTOL</h3>
-                <p>Shots per reload: 1</p>
-                <p>Cost: FREE</p>
-                <button onclick="selectGun('pistol')">SELECT</button>
-            </div>
-            
-            <div class="gun-item" id="machingunItem">
-                <h3>MACHINE GUN</h3>
-                <p>Shots per reload: 3</p>
-                <p>Cost: 150 💰</p>
-                <button onclick="buyGun('machinegun')" id="machinegunBtn">BUY</button>
-                <button onclick="selectGun('machinegun')" id="machinegunSelect" style="display:none;">SELECT</button>
-            </div>
-            
-            <div class="gun-item" id="shotgunItem">
-                <h3>SHOTGUN</h3>
-                <p>Shots per reload: 2</p>
-                <p>Cost: 200 💰</p>
-                <button onclick="buyGun('shotgun')" id="shotgunBtn">BUY</button>
-                <button onclick="selectGun('shotgun')" id="shotgunSelect" style="display:none;">SELECT</button>
-            </div>
-            
-            <button class="shop-button" onclick="leaveShop()">BACK TO GAME</button>
+    </div>
+
+    <!-- Shop -->
+    <div class="shop-screen hidden" id="shopScreen">
+        <h2>🛍️ GUN & SKIN SHOP</h2>
+        <div class="small-muted" style="margin-top:8px">Coins: <strong id="shopCoins">0</strong></div>
+
+        <div class="shop-list" id="shopList">
+            <!-- Items populated by JS -->
         </div>
-        
-        <div class="level-indicator">
-            Vanish in: <span id="targetTimer">2.4</span>s
-        </div>
-        
-        <div class="gun">
-            <div class="gun-scope"></div>
-            <div class="gun-barrel"></div>
-            <div class="gun-magazine"></div>
-            <div class="gun-body">
-                <div class="gun-trigger"></div>
-                <div class="gun-grip"></div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between">
+            <div>
+                <button class="shop-button" onclick="closeShop()">BACK TO GAME</button>
             </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <div class="small-muted">Owned guns: <span id="ownedGunsList"></span></div>
+            </div>
+        </div>
+
+        <div class="leaderboard hidden" id="shopLeaderboard">
+            <h4 style="margin:6px 0;">Leaderboard</h4>
+            <div id="lbEntries"></div>
         </div>
     </div>
 
-    <script>
-        const gameContainer = document.querySelector('.game-container');
-        const startMenu = document.getElementById('startMenu');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const shopScreen = document.getElementById('shopScreen');
-        const gun = document.querySelector('.gun');
-        const crosshair = document.getElementById('crosshair');
-        
-        let gameActive = false;
-        let timerStarted = false;
-        let currentLevel = 1;
-        let gameTime = 30;
-        let levelTime = 30;
-        let targetsHitThisLevel = 0;
-        let targetGoal = 10;
-        let currentTarget = null;
-        let currentBomb = null;
-        let lastTargetX = window.innerWidth / 2;
-        let lastTargetY = window.innerHeight / 2;
-        let gameTimer = null;
-        let targetTimer = null;
-        let bombSpawnTimer = null;
-        let canShoot = true;
-        let crosshairX = window.innerWidth / 2;
-        let crosshairY = window.innerHeight / 2;
-        const moveSpeed = 15;
-        let targetVanishTime = 3;
-        const TARGET_RADIUS = 30;
-        
-        // Coin and shop system
-        let totalCoins = 0;
-        let selectedGun = 'pistol';
-        const gunCosts = {
-            pistol: 0,
-            machinegun: 150,
-            shotgun: 200
-        };
-        const gunShots = {
-            pistol: 1,
-            machinegun: 3,
-            shotgun: 2
-        };
+    <div class="level-indicator">Vanish in: <span id="targetTimer">2.4</span>s</div>
 
-        // ===== SHOP FUNCTIONS =====
-        function updateShopUI() {
-            document.getElementById('shopCoins').textContent = totalCoins;
-            
-            // Reset all items to unselected
-            document.getElementById('pistolItem').classList.remove('selected');
-            document.getElementById('machingunItem').classList.remove('selected');
-            document.getElementById('shotgunItem').classList.remove('selected');
-            
-            // Only highlight the currently selected gun
-            if (selectedGun === 'pistol') {
-                document.getElementById('pistolItem').classList.add('selected');
-            } else if (selectedGun === 'machinegun') {
-                document.getElementById('machingunItem').classList.add('selected');
-            } else if (selectedGun === 'shotgun') {
-                document.getElementById('shotgunItem').classList.add('selected');
-            }
-            
-            // Update machine gun
-            const machinegunOwned = selectedGun === 'machinegun' || (totalCoins >= gunCosts.machinegun && selectedGun !== 'pistol' && selectedGun !== 'shotgun');
-            const hasMachinegun = localStorage && localStorage.getItem('hasMachinegun') === 'true' || selectedGun === 'machinegun';
-            
-            if (selectedGun === 'machinegun' || hasMachinegun) {
-                document.getElementById('machinegunBtn').style.display = 'none';
-                document.getElementById('machinegunSelect').style.display = 'inline-block';
-            } else {
-                document.getElementById('machinegunBtn').style.display = 'inline-block';
-                document.getElementById('machinegunSelect').style.display = 'none';
-                document.getElementById('machinegunBtn').disabled = totalCoins < gunCosts.machinegun;
-            }
-            
-            // Update shotgun
-            const shotgunOwned = selectedGun === 'shotgun' || (totalCoins >= gunCosts.shotgun && selectedGun !== 'pistol' && selectedGun !== 'machinegun');
-            const hasShotgun = localStorage && localStorage.getItem('hasShotgun') === 'true' || selectedGun === 'shotgun';
-            
-            if (selectedGun === 'shotgun' || hasShotgun) {
-                document.getElementById('shotgunBtn').style.display = 'none';
-                document.getElementById('shotgunSelect').style.display = 'inline-block';
-            } else {
-                document.getElementById('shotgunBtn').style.display = 'inline-block';
-                document.getElementById('shotgunSelect').style.display = 'none';
-                document.getElementById('shotgunBtn').disabled = totalCoins < gunCosts.shotgun;
-            }
+    <div class="gun" id="gunGraphic">
+        <div class="gun-body" id="gunBody"></div>
+    </div>
+</div>
+
+<script>
+/* ===========================
+   Game constants & state
+   =========================== */
+const TARGET_RADIUS = 30; // used for placement & default hit checks
+let currentLevel = 1;
+let gameTime = 30;
+let levelActive = false;
+let targetsHitThisLevel = 0;
+let targetGoal = 10;
+let currentTarget = null;
+let currentBomb = null;
+let lastTargetPos = {x: window.innerWidth/2, y: window.innerHeight/2};
+let targetVanishTime = 2.4;
+let targetTimerInterval = null;
+let bombSpawnTimeout = null;
+let gameTimerInterval = null;
+let spawnInterval = null;
+let canShoot = true;
+let crosshairX = window.innerWidth/2;
+let crosshairY = window.innerHeight/2;
+const moveSpeed = 16;
+
+// Player progression & shop
+let totalCoins = Number(localStorage.getItem('fr_coins')||0);
+let totalXP = Number(localStorage.getItem('fr_xp')||0);
+let ownedGuns = JSON.parse(localStorage.getItem('fr_ownedGuns')||'["pistol"]');
+let equippedGun = localStorage.getItem('fr_equippedGun') || 'pistol';
+let equippedSkin = localStorage.getItem('fr_equippedSkin') || 'Classic';
+
+// weapons definitions
+const WEAPONS = {
+    pistol:{name:'Pistol',cost:0,shots:1,hitRadius:50,fireDelay:120,skinable:true},
+    machinegun:{name:'Machine Gun',cost:150,shots:3,hitRadius:50,fireDelay:120,skinable:true},
+    shotgun:{name:'Shotgun',cost:300,shots:2,hitRadius:TARGET_RADIUS*2 /* shotgun 2x radius */,fireDelay:220,skinable:true},
+    sniper:{name:'Sniper',cost:500,shots:1,hitRadius:30,fireDelay:350,oneShotKill:true,skinable:true}
+};
+
+// skins (visual only)
+const SKINS = [
+    {id:'Classic',label:'Classic',css:'#00ff66'},
+    {id:'Crimson',label:'Crimson',css:'#ff6666'},
+    {id:'Midnight',label:'Midnight',css:'#66ccff'},
+    {id:'Gold',label:'Gold',css:'#ffd24d'},
+];
+
+// leaderboard (simple top 5)
+function saveLeaderboardEntry(scoreObj){
+    const raw = JSON.parse(localStorage.getItem('fr_leaderboard')||'[]');
+    raw.push(scoreObj);
+    raw.sort((a,b)=>b.coins - a.coins || b.targets - a.targets);
+    const top = raw.slice(0,10);
+    localStorage.setItem('fr_leaderboard', JSON.stringify(top));
+}
+
+/* ===========================
+   UI helpers
+   =========================== */
+const crosshair = document.getElementById('crosshair');
+const uiCoins = document.getElementById('uiCoins');
+const uiXP = document.getElementById('uiXP');
+const levelDisplay = document.getElementById('levelDisplay');
+const timerDisplay = document.getElementById('timerDisplay');
+const targetTimerText = document.getElementById('targetTimer');
+const targetsHitCountEl = document.getElementById('targetsHitCount');
+const targetGoalDisplay = document.getElementById('targetGoalDisplay');
+const equippedBadge = document.getElementById('equippedBadge');
+const equippedSkinEl = document.getElementById('equippedSkin');
+
+function updateUI(){
+    uiCoins.textContent = totalCoins;
+    uiXP.textContent = totalXP;
+    levelDisplay.textContent = currentLevel;
+    timerDisplay.textContent = gameTime;
+    targetsHitCountEl.textContent = targetsHitThisLevel;
+    targetGoalDisplay.textContent = targetGoal;
+    equippedBadge.textContent = WEAPONS[equippedGun].name;
+    equippedSkinEl.textContent = equippedSkin;
+    document.getElementById('shopCoins').textContent = totalCoins;
+    persistPlayer();
+}
+
+/* ===========================
+   persistence
+   =========================== */
+function persistPlayer(){
+    localStorage.setItem('fr_coins', String(totalCoins));
+    localStorage.setItem('fr_xp', String(totalXP));
+    localStorage.setItem('fr_ownedGuns', JSON.stringify(ownedGuns));
+    localStorage.setItem('fr_equippedGun', equippedGun);
+    localStorage.setItem('fr_equippedSkin', equippedSkin);
+}
+
+/* ===========================
+   Level data & progression
+   =========================== */
+function getLevelData(level){
+    // Example scaling: target goal increases every level, some levels spawn multiple targets and moving targets
+    const baseGoal = 8 + (level-1)*4;
+    const timeLimit = Math.max(10, Math.round(22 - (level-1)*1.2));
+    // determine spawn rate modifier & multi-target chance
+    const config = {
+        targetGoal: baseGoal,
+        timeLimit,
+        spawnEveryMs: Math.max(600, 1200 - (level-1)*60), // faster spawn each level
+        multiSpawnChance: Math.min(0.6, 0.12 + level*0.04), // some levels have multiple per tick
+        movingChance: Math.min(0.6, 0.1 + level*0.05), // targets move more often on higher levels
+        bombChance: Math.min(0.35, 0.08 + level*0.02)
+    };
+    return config;
+}
+
+/* ===========================
+   Spawn / Target logic
+   =========================== */
+function clearCurrentEntities(){
+    if(currentTarget){ try{currentTarget.remove()}catch(e){} currentTarget = null; }
+    if(currentBomb){ try{currentBomb.remove()}catch(e){} currentBomb = null; }
+    document.querySelectorAll('.target').forEach(n=>n.remove());
+    document.querySelectorAll('.bomb').forEach(n=>n.remove());
+}
+
+function spawnTargetsBatch(config){
+    // spawn 1 or more targets based on multiSpawnChance
+    const toSpawn = Math.random() < config.multiSpawnChance ? (1 + Math.floor(Math.random()*2)) : 1;
+    for(let i=0;i<toSpawn;i++){
+        spawnSingleTarget(config);
+    }
+    // also schedule bomb sometimes
+    if(Math.random() < config.bombChance) spawnBomb();
+}
+
+function spawnSingleTarget(config){
+    if(!levelActive) return;
+    const target = document.createElement('div');
+    target.className = 'target target-pulse';
+    target.innerHTML = '<div class="inner"></div>';
+    // pick position away from last target
+    let x,y,valid=false,attempts=0;
+    while(!valid && attempts<50){
+        attempts++;
+        x = Math.random()*(window.innerWidth-120)+60;
+        y = Math.random()*(window.innerHeight-200)+80;
+        const dx = x - lastTargetPos.x;
+        const dy = y - lastTargetPos.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist > TARGET_RADIUS*1.8) valid = true;
+    }
+    lastTargetPos = {x,y};
+    target.style.left = x + 'px';
+    target.style.top  = y + 'px';
+    document.body.appendChild(target);
+
+    // some targets move slightly if config allows
+    const cfgMoving = Math.random() < config.movingChance;
+    if(cfgMoving) animateTargetMovement(target);
+
+    // lifetime before vanish
+    const vanish = targetVanishTime * 1000;
+    const vanishTimeout = setTimeout(()=>{
+        if(target) {
+            target.classList.add('target-fading');
+            try{target.remove()}catch(e){}
         }
+    }, vanish);
 
-        function selectGun(gun) {
-            selectedGun = gun;
-            updateShopUI();
-        }
+    // click handler is replaced by keyboard shooting; but allow clicking for convenience
+    target.dataset.centerX = x + 30;
+    target.dataset.centerY = y + 30;
+    target.dataset.spawnedAt = Date.now();
 
-        function buyGun(gun) {
-            if (totalCoins >= gunCosts[gun]) {
-                totalCoins -= gunCosts[gun];
-                selectedGun = gun;
-                updateShopUI();
-            }
-        }
+    // cleanup when removed
+    target.addEventListener('remove', ()=>clearTimeout(vanishTimeout));
+}
 
-        function leaveShop() {
-            shopScreen.classList.add('hidden');
-            gameOverScreen.classList.remove('hidden');
-        }
+function animateTargetMovement(el){
+    // small random walk using requestAnimationFrame
+    let vx = (Math.random()-0.5)*1.6;
+    let vy = (Math.random()-0.5)*1.6;
+    function step(){
+        if(!document.body.contains(el) || !levelActive) return;
+        const rect = el.getBoundingClientRect();
+        let nx = rect.left + vx;
+        let ny = rect.top + vy;
+        if(nx < 30 || nx > window.innerWidth-90) vx *= -1;
+        if(ny < 30 || ny > window.innerHeight-140) vy *= -1;
+        el.style.left = (rect.left + vx) + 'px';
+        el.style.top = (rect.top + vy) + 'px';
+        requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 
-        function goToShop() {
-            gameOverScreen.classList.add('hidden');
-            shopScreen.classList.remove('hidden');
-            updateShopUI();
-        }
+function spawnBomb(){
+    if(!levelActive) return;
+    if(currentBomb) currentBomb.remove();
+    const bomb = document.createElement('div');
+    bomb.className = 'bomb';
+    // random pos not too near targets (rough)
+    const x = Math.random()*(window.innerWidth-120)+60;
+    const y = Math.random()*(window.innerHeight-200)+80;
+    bomb.style.left = x + 'px';
+    bomb.style.top = y + 'px';
+    document.body.appendChild(bomb);
+    currentBomb = bomb;
+    // bomb disappears after 2.4s
+    setTimeout(()=>{
+        if(currentBomb){ try{currentBomb.remove()}catch(e){} currentBomb = null; if(levelActive) { /* next bombs spawn naturally */ } }
+    }, 2400);
+}
 
-        // ===== GAME FUNCTIONS =====
+/* ===========================
+   Shooting & hit detection
+   =========================== */
+function shootAt(x,y){
+    if(!levelActive || !canShoot) return;
+    canShoot = false;
+    const weapon = WEAPONS[equippedGun];
+    // muzzle flash + recoil
+    spawnMuzzleFlash();
+    document.getElementById('gunBody').classList.add('recoil');
+    setTimeout(()=>document.getElementById('gunBody').classList.remove('recoil'), 120);
 
-        function getLevelData(level) {
-            return {
-                targetGoal: 10 + (level - 1) * 10,
-                timeLimit: 18 + (level - 1) * 9
-            };
-        }
-
-        function updateCrosshairPosition() {
-            crosshair.style.left = (crosshairX - 20) + 'px';
-            crosshair.style.top = (crosshairY - 20) + 'px';
-        }
-
-        function updateUI() {
-            document.getElementById('level').textContent = currentLevel;
-            document.getElementById('targetsHitCount').textContent = targetsHitThisLevel;
-            document.getElementById('timer').textContent = gameTime;
-            document.getElementById('uiCoins').textContent = totalCoins;
-        }
-
-        function startGameNow() {
-            currentLevel = 1;
-            startLevel();
-        }
-
-        function startLevel() {
-            console.log('Starting level ' + currentLevel);
-            const levelData = getLevelData(currentLevel);
-            targetGoal = levelData.targetGoal;
-            levelTime = levelData.timeLimit;
-            gameTime = levelTime;
-            targetsHitThisLevel = 0;
-            gameActive = true;
-            timerStarted = false;
-            canShoot = true;
-            
-            startMenu.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
-            
-            updateUI();
-            spawnTarget();
-            spawnBomb();
-        }
-
-        function endLevel() {
-            gameActive = false;
-            clearInterval(gameTimer);
-            clearInterval(targetTimer);
-            clearInterval(bombSpawnTimer);
-            
-            if (currentTarget) {
-                currentTarget.remove();
-                currentTarget = null;
-            }
-            
-            if (currentBomb) {
-                currentBomb.remove();
-                currentBomb = null;
-            }
-            
-            // Award coins (100 base + 10 per target hit)
-            const baseCoins = 100;
-            const targetCoins = targetsHitThisLevel * 10;
-            const coinsEarned = baseCoins + targetCoins;
-            
-            document.getElementById('finalTargets').textContent = targetsHitThisLevel;
-            document.getElementById('coinsEarned').textContent = coinsEarned;
-            document.getElementById('totalCoins').textContent = totalCoins;
-            
-            if (targetsHitThisLevel >= targetGoal) {
-                document.getElementById('gameOverTitle').textContent = 'LEVEL COMPLETE!';
-                document.getElementById('gameOverTitle').style.color = '#00ff00';
-                document.getElementById('nextLevel').textContent = currentLevel + 1;
-            } else {
-                document.getElementById('gameOverTitle').textContent = 'MISSION FAILED!';
-                document.getElementById('gameOverTitle').style.color = '#ff0000';
-            }
-            
-            gameOverScreen.classList.remove('hidden');
-        }
-
-        function startNextLevel() {
-            if (targetsHitThisLevel >= targetGoal) {
-                currentLevel++;
-                startLevel();
-            } else {
-                backToMenu();
-            }
-        }
-
-        function backToMenu() {
-            startMenu.classList.remove('hidden');
-            gameOverScreen.classList.add('hidden');
-            if (gameTimer) clearInterval(gameTimer);
-            if (targetTimer) clearInterval(targetTimer);
-            if (bombSpawnTimer) clearInterval(bombSpawnTimer);
-            gameActive = false;
-            timerStarted = false;
-        }
-
-        function spawnTarget() {
-            if (!gameActive) return;
-            
-            if (currentTarget) {
-                currentTarget.remove();
-            }
-            
-            const target = document.createElement('div');
-            target.className = 'target target-pulse';
-            
-            let x, y;
-            let validPosition = false;
-            let attempts = 0;
-            const minDistanceRadius = TARGET_RADIUS * 24; // 12 radius away
-            const minHorizontalDiff = 350;
-            const minVerticalDiff = 350;
-            
-            while (!validPosition && attempts < 50) {
-                attempts++;
-                const maxX = window.innerWidth - 100;
-                const maxY = window.innerHeight - 150;
-                
-                x = Math.random() * (maxX - 100) + 100;
-                y = Math.random() * (maxY - 150) + 100;
-                
-                const distance = Math.sqrt(Math.pow(x - lastTargetX, 2) + Math.pow(y - lastTargetY, 2));
-                const horizontalDiff = Math.abs(x - lastTargetX);
-                const verticalDiff = Math.abs(y - lastTargetY);
-                
-                if (distance > minDistanceRadius && horizontalDiff > minHorizontalDiff && verticalDiff > minVerticalDiff) {
-                    validPosition = true;
+    // fire multiple shots (for machinegun/shotgun)
+    for(let s=0;s<weapon.shots;s++){
+        setTimeout(()=>{
+            // check bombs first - get bombs on screen
+            const bombs = Array.from(document.querySelectorAll('.bomb'));
+            for(const b of bombs){
+                const r = b.getBoundingClientRect();
+                const centerX = r.left + r.width/2;
+                const centerY = r.top + r.height/2;
+                const dist = Math.hypot(x-centerX, y-centerY);
+                if(dist < 50){
+                    // bomb hit -> fail level
+                    playBombExplosion();
+                    levelFailWithMessage('💣 You hit a bomb!');
+                    return;
                 }
             }
-            
-            target.style.left = x + 'px';
-            target.style.top = y + 'px';
-            
-            gameContainer.appendChild(target);
-            currentTarget = target;
-            lastTargetX = x;
-            lastTargetY = y;
-            targetVanishTime = 2.4;
-            
-            clearInterval(targetTimer);
-            startTargetVanishTimer();
-        }
-
-        function startTargetVanishTimer() {
-            targetTimer = setInterval(() => {
-                targetVanishTime -= 0.1;
-                document.getElementById('targetTimer').textContent = targetVanishTime.toFixed(1);
-                
-                if (targetVanishTime <= 0) {
-                    clearInterval(targetTimer);
-                    if (currentTarget && gameActive) {
-                        currentTarget.classList.add('target-fading');
-                        setTimeout(() => {
-                            if (currentTarget) currentTarget.remove();
-                            currentTarget = null;
-                            if (gameActive) spawnTarget();
-                        }, 500);
-                    }
-                }
-            }, 100);
-        }
-
-        function shoot(x, y) {
-            if (!gameActive) return;
-            
-            const shotsToFire = gunShots[selectedGun];
-            
-            for (let shot = 0; shot < shotsToFire; shot++) {
-                setTimeout(() => {
-                    if (!gameActive) return;
-                    
-                    canShoot = false;
-                    
-                    gun.classList.add('recoil');
-                    setTimeout(() => gun.classList.remove('recoil'), 100);
-                    
-                    createMuzzleFlash();
-                    
-                    // Check if hit bomb
-                    if (currentBomb) {
-                        const rect = currentBomb.getBoundingClientRect();
-                        const bombCenterX = rect.left + rect.width / 2;
-                        const bombCenterY = rect.top + rect.height / 2;
-                        
-                        const distance = Math.sqrt(Math.pow(x - bombCenterX, 2) + Math.pow(y - bombCenterY, 2));
-                        
-                        if (distance < 50) {
-                            playBombExplosion();
-                            document.getElementById('gameOverTitle').textContent = '💣 RESTART - 10000 AURA 💣';
-                            document.getElementById('gameOverTitle').style.color = '#ff0000';
-                            endLevel();
-                            return;
-                        }
-                    }
-                    
-                    if (currentTarget) {
-                        const rect = currentTarget.getBoundingClientRect();
-                        const targetCenterX = rect.left + rect.width / 2;
-                        const targetCenterY = rect.top + rect.height / 2;
-                        
-                        const distance = Math.sqrt(Math.pow(x - targetCenterX, 2) + Math.pow(y - targetCenterY, 2));
-                        
-                        if (distance < 50) {
-                            hitTarget();
-                        } else {
-                            createHitMarker(x, y);
-                        }
-                    } else {
-                        createHitMarker(x, y);
-                    }
-                    
-                    if (shot === shotsToFire - 1) {
-                        setTimeout(() => canShoot = true, 50);
-                    }
-                }, shot * 50);
-            }
-        }
-
-        function createMuzzleFlash() {
-            const flash = document.createElement('div');
-            flash.className = 'muzzle-flash';
-            flash.style.left = (window.innerWidth - 80) + 'px';
-            flash.style.top = (window.innerHeight - 80) + 'px';
-            gameContainer.appendChild(flash);
-            setTimeout(() => flash.remove(), 100);
-            
-            // Play gunshot sound
-            playGunshot();
-        }
-
-        function playGunshot() {
-            // Create a "pew" sound using Web Audio API
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const now = audioContext.currentTime;
-            
-            // Main "pew" sound - higher pitched laser-like sound
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-            
-            // Pew sound: starts high, drops quickly
-            osc.frequency.setValueAtTime(800, now);
-            osc.frequency.exponentialRampToValueAtTime(400, now + 0.08);
-            
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-            
-            osc.start(now);
-            osc.stop(now + 0.08);
-            
-            // Add a quick click for definition
-            const click = audioContext.createOscillator();
-            const clickGain = audioContext.createGain();
-            
-            click.connect(clickGain);
-            clickGain.connect(audioContext.destination);
-            
-            click.frequency.setValueAtTime(600, now);
-            clickGain.gain.setValueAtTime(0.15, now);
-            clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-            
-            click.start(now);
-            click.stop(now + 0.04);
-        }
-
-        function playBombExplosion() {
-            // Create a "boom" sound for bomb explosion
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const now = audioContext.currentTime;
-            
-            // Main boom - very low frequency
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-            
-            osc.frequency.setValueAtTime(100, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
-            
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.exponentialRampToValueAtTime(0.05, now + 0.3);
-            
-            osc.start(now);
-            osc.stop(now + 0.3);
-            
-            // Mid-range explosion sound
-            const mid = audioContext.createOscillator();
-            const midGain = audioContext.createGain();
-            
-            mid.connect(midGain);
-            midGain.connect(audioContext.destination);
-            
-            mid.frequency.setValueAtTime(300, now);
-            mid.frequency.exponentialRampToValueAtTime(100, now + 0.2);
-            
-            midGain.gain.setValueAtTime(0.2, now);
-            midGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-            
-            mid.start(now);
-            mid.stop(now + 0.2);
-        }
-
-        function hitTarget() {
-            targetsHitThisLevel++;
-            totalCoins += 10; // Add 10 coins per target hit
-            updateUI();
-            createHitMarker(crosshairX, crosshairY);
-            
-            if (targetsHitThisLevel >= targetGoal) {
-                endLevel();
-            } else {
-                spawnTarget();
-            }
-        }
-
-        function createHitMarker(x, y) {
-            const marker = document.createElement('div');
-            marker.className = 'hit-marker';
-            marker.style.left = (x - 15) + 'px';
-            marker.style.top = (y - 15) + 'px';
-            gameContainer.appendChild(marker);
-            setTimeout(() => marker.remove(), 300);
-        }
-
-        function spawnBomb() {
-            if (!gameActive) return;
-            
-            clearInterval(bombSpawnTimer);
-            
-            // Spawn bomb after 2-4 seconds
-            const spawnDelay = Math.random() * 2000 + 2000;
-            
-            bombSpawnTimer = setTimeout(() => {
-                if (!gameActive) return;
-                
-                if (currentBomb) {
-                    currentBomb.remove();
-                }
-                
-                const bomb = document.createElement('div');
-                bomb.className = 'bomb';
-                
-                let bombX, bombY;
-                let validPosition = false;
-                let attempts = 0;
-                
-                while (!validPosition && attempts < 50) {
-                    attempts++;
-                    bombX = Math.random() * (window.innerWidth - 100) + 50;
-                    bombY = Math.random() * (window.innerHeight - 150) + 50;
-                    
-                    if (currentTarget) {
-                        const rect = currentTarget.getBoundingClientRect();
-                        const targetCenterX = rect.left + rect.width / 2;
-                        const targetCenterY = rect.top + rect.height / 2;
-                        const distance = Math.sqrt(Math.pow(bombX - targetCenterX, 2) + Math.pow(bombY - targetCenterY, 2));
-                        if (distance > 150) validPosition = true;
-                    } else {
-                        validPosition = true;
-                    }
-                }
-                
-                bomb.style.left = bombX + 'px';
-                bomb.style.top = bombY + 'px';
-                
-                gameContainer.appendChild(bomb);
-                currentBomb = bomb;
-                
-                // Bomb disappears after 2.4 seconds, then spawn next bomb
-                setTimeout(() => {
-                    if (currentBomb) {
-                        currentBomb.classList.add('target-fading');
-                        setTimeout(() => {
-                            if (currentBomb) currentBomb.remove();
-                            currentBomb = null;
-                            if (gameActive) spawnBomb();
-                        }, 500);
-                    }
-                }, 2400);
-            }, spawnDelay);
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (!gameActive) {
-                // Escape to go back to menu
-                if (e.code === 'Escape') {
-                    e.preventDefault();
-                    if (!shopScreen.classList.contains('hidden')) {
-                        leaveShop();
-                    } else if (!startMenu.classList.contains('hidden')) {
-                        return; // Already at menu
-                    } else if (!gameOverScreen.classList.contains('hidden')) {
-                        backToMenu();
-                    }
-                }
-                
-                // Enter to start
-                if (e.code === 'Enter') {
-                    e.preventDefault();
-                    if (!startMenu.classList.contains('hidden')) {
-                        startGameNow();
-                    } else if (!gameOverScreen.classList.contains('hidden')) {
-                        startNextLevel();
-                    }
-                }
-                return;
-            }
-            
-            // Start timer on first arrow key press
-            if (!timerStarted && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
-                timerStarted = true;
-                gameTimer = setInterval(() => {
-                    gameTime--;
-                    updateUI();
-                    
-                    if (gameTime <= 0) {
-                        endLevel();
-                    }
-                }, 1000);
-            }
-            
-            if (e.code === 'ArrowUp') {
-                e.preventDefault();
-                crosshairY = Math.max(0, crosshairY - moveSpeed);
-                updateCrosshairPosition();
-            } else if (e.code === 'ArrowDown') {
-                e.preventDefault();
-                crosshairY = Math.min(window.innerHeight, crosshairY + moveSpeed);
-                updateCrosshairPosition();
-            } else if (e.code === 'ArrowLeft') {
-                e.preventDefault();
-                crosshairX = Math.max(0, crosshairX - moveSpeed);
-                updateCrosshairPosition();
-            } else if (e.code === 'ArrowRight') {
-                e.preventDefault();
-                crosshairX = Math.min(window.innerWidth, crosshairX + moveSpeed);
-                updateCrosshairPosition();
-            } else if (e.code === 'Space') {
-                e.preventDefault();
-                if (gameActive && canShoot) {
-                    shoot(crosshairX, crosshairY);
+            // check targets
+            const targets = Array.from(document.querySelectorAll('.target'));
+            let hitAny = false;
+            for(const t of targets){
+                const r = t.getBoundingClientRect();
+                const centerX = r.left + r.width/2;
+                const centerY = r.top + r.height/2;
+                const range = weapon.hitRadius; // weapon dependent radius
+                const dist = Math.hypot(x-centerX, y-centerY);
+                if(dist <= range){
+                    // headshot if very close to center
+                    const isHead = dist <= 12;
+                    hitAny = true;
+                    handleTargetHit(t, isHead);
+                    // shotgun and machinegun can hit multiple; pistol/sniper only first
+                    if(equippedGun === 'pistol' || equippedGun === 'sniper') { break; }
                 }
             }
-        });
+            if(!hitAny){
+                createHitMarker(x,y);
+            }
+        }, s * 50);
+    }
 
-        function leaveShop() {
-            shopScreen.classList.add('hidden');
-            gameOverScreen.classList.remove('hidden');
+    setTimeout(()=>{ canShoot = true; }, weapon.fireDelay);
+}
+
+/* ===========================
+   Target hit consequences
+   =========================== */
+function handleTargetHit(targetEl, headshot=false){
+    // visual + coins + xp + remove
+    try{ targetEl.remove(); }catch(e){}
+    targetsHitThisLevel++;
+    // base coins
+    let coinsGained = 10;
+    let xpGain = 6;
+    if(headshot){
+        coinsGained += 8; // bonus
+        xpGain += 6;
+        // small special sound
+        playHeadshotSound();
+    } else {
+        playHitSound();
+    }
+    // sniper instant kill + bonus
+    if(equippedGun === 'sniper'){
+        coinsGained += 12;
+        xpGain += 8;
+        playSniperPing();
+    }
+    totalCoins += coinsGained;
+    totalXP += xpGain;
+    updateUI();
+    createHitMarker(crosshairX, crosshairY);
+    // check goal
+    if(targetsHitThisLevel >= targetGoal){
+        // level completed
+        setTimeout(()=>endLevel(true), 250);
+    } else {
+        // optionally spawn more to keep pace (fast pace)
+        // spawnSingleTarget(getLevelData(currentLevel));  // already handled by spawn interval
+    }
+}
+
+/* ===========================
+   Level management
+   =========================== */
+function startGameNow(){
+    // reset progression, levels start from 1
+    currentLevel = 1;
+    startLevel();
+    document.getElementById('startMenu').classList.add('hidden');
+}
+
+function startLevel(){
+    clearIntervalsAndEntities();
+    // get level config
+    const cfg = getLevelData(currentLevel);
+    targetGoal = cfg.targetGoal;
+    gameTime = cfg.timeLimit;
+    targetsHitThisLevel = 0;
+    levelActive = true;
+    updateUI();
+    updateUI(); // twice for safety
+
+    // spawn loop
+    spawnInterval = setInterval(()=>spawnTargetsBatch(cfg), cfg.spawnEveryMs);
+    // also ensure an initial burst so level isn't empty
+    spawnTargetsBatch(cfg);
+
+    // timer tick
+    gameTimerInterval = setInterval(()=>{
+        gameTime--;
+        timerDisplay.textContent = gameTime;
+        if(gameTime <= 0){
+            endLevel(false);
         }
+    }, 1000);
+}
 
-        function goToShop() {
-            gameOverScreen.classList.add('hidden');
-            shopScreen.classList.remove('hidden');
-            updateShopUI();
+function endLevel(success=true){
+    clearIntervalsAndEntities();
+    levelActive = false;
+    // award coins base + per target
+    const baseCoins = success ? 100 : 0;
+    const targetCoins = targetsHitThisLevel * 10;
+    const coinsEarned = baseCoins + targetCoins;
+    totalCoins += coinsEarned;
+    // save leaderboard
+    saveLeaderboardEntry({when:Date.now(), level:currentLevel, coins:totalCoins, targets:targetsHitThisLevel});
+    // update UI for game over screen
+    document.getElementById('finalTargets').textContent = targetsHitThisLevel;
+    document.getElementById('coinsEarned').textContent = coinsEarned;
+    document.getElementById('totalCoins').textContent = totalCoins;
+    document.getElementById('nextLevel').textContent = currentLevel + 1;
+    document.getElementById('gameOverTitle').textContent = success ? 'LEVEL COMPLETE!' : 'MISSION FAILED!';
+    document.getElementById('gameOverTitle').style.color = success ? '#00ff66' : '#ff6666';
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+    persistPlayer();
+    if(success) currentLevel++;
+}
+
+function levelFailWithMessage(msg){
+    // immediate fail
+    document.getElementById('gameOverTitle').textContent = msg;
+    endLevel(false);
+}
+
+function clearIntervalsAndEntities(){
+    clearInterval(gameTimerInterval); gameTimerInterval = null;
+    clearInterval(spawnInterval); spawnInterval = null;
+    clearTimeout(bombSpawnTimeout); bombSpawnTimeout = null;
+    clearCurrentEntities();
+}
+
+/* ===========================
+   Shop & UI interactions
+   =========================== */
+const shopListEl = document.getElementById('shopList');
+const ownedGunsListEl = document.getElementById('ownedGunsList');
+
+function openShop(){
+    document.getElementById('shopScreen').classList.remove('hidden');
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    buildShopUI();
+    showLeaderboardInShop();
+}
+
+function closeShop(){
+    document.getElementById('shopScreen').classList.add('hidden');
+    // return to game or level screen
+    if(levelActive) { /* continue */ }
+    else document.getElementById('gameOverScreen').classList.remove('hidden');
+}
+
+function buildShopUI(){
+    shopListEl.innerHTML = '';
+    // guns
+    for(const key of Object.keys(WEAPONS)){
+        const w = WEAPONS[key];
+        const item = document.createElement('div');
+        item.className = 'gun-item';
+        const meta = document.createElement('div'); meta.className='meta';
+        meta.innerHTML = `<div style="font-weight:800">${w.name} <span class="small-muted">(${w.shots} shots)</span></div>
+                          <div class="small-muted">Hit range: ${Math.round(w.hitRadius)}px</div>
+                          <div class="small-muted">Fire delay: ${w.fireDelay}ms</div>`;
+        const actions = document.createElement('div');
+        // buy vs select
+        if(ownedGuns.includes(key)){
+            const sel = document.createElement('button');
+            sel.innerText = 'SELECT';
+            sel.onclick = ()=>{ equippedGun = key; persistPlayer(); updateUI(); buildShopUI(); };
+            const badge = document.createElement('span'); badge.className='selected-badge';
+            if(equippedGun === key) badge.innerText = 'EQUIPPED';
+            else badge.innerText = '';
+            actions.appendChild(sel);
+            if(equippedGun===key) actions.appendChild(badge);
+        } else {
+            const buy = document.createElement('button');
+            buy.innerText = `BUY ${w.cost}💰`;
+            buy.onclick = ()=>{ if(totalCoins>=w.cost){ totalCoins-=w.cost; ownedGuns.push(key); equippedGun = key; persistPlayer(); updateUI(); buildShopUI(); } else alert('Not enough coins'); };
+            actions.appendChild(buy);
         }
+        item.appendChild(meta);
+        item.appendChild(actions);
+        shopListEl.appendChild(item);
+    }
+    // skins
+    const skinHeader = document.createElement('div'); skinHeader.style.marginTop='6px'; skinHeader.innerHTML='<strong style="margin-bottom:6px">Skins</strong>';
+    shopListEl.appendChild(skinHeader);
+    for(const s of SKINS){
+        const item = document.createElement('div');
+        item.className = 'gun-item';
+        const meta = document.createElement('div'); meta.className='meta';
+        meta.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><div class="skin-preview" style="background:${s.css}"></div><div style="font-weight:700">${s.label}</div></div>`;
+        const actions = document.createElement('div');
+        const cost = 60;
+        if(equippedSkin === s.id){
+            const badge = document.createElement('span'); badge.className='selected-badge'; badge.innerText='EQUIPPED';
+            actions.appendChild(badge);
+        } else {
+            const buy = document.createElement('button');
+            buy.innerText = `EQUIP`;
+            buy.onclick = ()=>{ equippedSkin = s.id; persistPlayer(); updateUI(); buildShopUI(); };
+            actions.appendChild(buy);
+        }
+        item.appendChild(meta);
+        item.appendChild(actions);
+        shopListEl.appendChild(item);
+    }
+    // owned list
+    ownedGunsListEl.textContent = ownedGuns.map(g=>WEAPONS[g].name).join(', ');
+}
 
-        updateCrosshairPosition();
-        updateShopUI();
-    </script>
+/* ===========================
+   Leaderboard
+   =========================== */
+function showLeaderboard(){
+    const lb = JSON.parse(localStorage.getItem('fr_leaderboard')||'[]');
+    let txt = 'Leaderboard\n\n';
+    for(let i=0;i<Math.min(lb.length,10);i++){
+        const e = lb[i];
+        const date = new Date(e.when);
+        txt += `${i+1}. Level ${e.level} — Coins: ${e.coins} — Targets: ${e.targets} — ${date.toLocaleString()}\n`;
+    }
+    alert(txt || 'No leaderboard entries yet.');
+}
+function showLeaderboardInShop(){
+    const raw = JSON.parse(localStorage.getItem('fr_leaderboard')||'[]');
+    const el = document.getElementById('lbEntries');
+    el.innerHTML = '';
+    raw.slice(0,8).forEach((r,i)=>{
+        const row = document.createElement('div');
+        row.innerText = `${i+1}. L${r.level} — ${r.coins}💰 — ${r.targets} targets`;
+        el.appendChild(row);
+    });
+    document.getElementById('shopLeaderboard').classList.remove('hidden');
+}
+
+/* ===========================
+   Visuals: muzzle, hit marker
+   =========================== */
+function spawnMuzzleFlash(){
+    const flash = document.createElement('div');
+    flash.className = 'muzzle-flash';
+    flash.style.left = (window.innerWidth - 120) + 'px';
+    flash.style.top = (window.innerHeight - 160) + 'px';
+    document.body.appendChild(flash);
+    setTimeout(()=>flash.remove(), 120);
+}
+
+function createHitMarker(x,y){
+    const m = document.createElement('div');
+    m.className = 'hit-marker';
+    m.style.left = (x-15)+'px';
+    m.style.top = (y-15)+'px';
+    document.body.appendChild(m);
+    setTimeout(()=>{ try{ m.remove() }catch(e){} }, 300);
+}
+
+/* ===========================
+   Audio (Web Audio API simple)
+   =========================== */
+const AudioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+
+function playHitSound(){
+    if(!AudioCtx) return;
+    const t = AudioCtx.currentTime;
+    const o = AudioCtx.createOscillator();
+    const g = AudioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(700, t);
+    o.frequency.exponentialRampToValueAtTime(300, t+0.08);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+    o.connect(g); g.connect(AudioCtx.destination);
+    o.start(t); o.stop(t+0.09);
+}
+
+function playHeadshotSound(){
+    if(!AudioCtx) return;
+    const t = AudioCtx.currentTime;
+    const o = AudioCtx.createOscillator();
+    const g = AudioCtx.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(1200,t);
+    o.frequency.exponentialRampToValueAtTime(700,t+0.12);
+    g.gain.setValueAtTime(0.14,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+    o.connect(g); g.connect(AudioCtx.destination);
+    o.start(t); o.stop(t+0.12);
+}
+
+function playGunshot(){
+    if(!AudioCtx) return;
+    const t = AudioCtx.currentTime;
+    // main pew
+    const o = AudioCtx.createOscillator();
+    const g = AudioCtx.createGain();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(900,t);
+    o.frequency.exponentialRampToValueAtTime(420,t+0.08);
+    g.gain.setValueAtTime(0.18,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+    o.connect(g); g.connect(AudioCtx.destination);
+    o.start(t); o.stop(t+0.08);
+    // small click
+    const c = AudioCtx.createOscillator();
+    const cg = AudioCtx.createGain();
+    c.type='triangle';
+    c.frequency.setValueAtTime(600,t);
+    cg.gain.setValueAtTime(0.12,t);
+    cg.gain.exponentialRampToValueAtTime(0.001,t+0.04);
+    c.connect(cg); cg.connect(AudioCtx.destination);
+    c.start(t); c.stop(t+0.04);
+}
+
+function playBombExplosion(){
+    if(!AudioCtx) return;
+    const t = AudioCtx.currentTime;
+    const o = AudioCtx.createOscillator();
+    const g = AudioCtx.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(120,t);
+    o.frequency.exponentialRampToValueAtTime(50,t+0.26);
+    g.gain.setValueAtTime(0.5,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.26);
+    o.connect(g); g.connect(AudioCtx.destination);
+    o.start(t); o.stop(t+0.26);
+}
+
+function playSniperPing(){
+    if(!AudioCtx) return;
+    const t = AudioCtx.currentTime;
+    const o = AudioCtx.createOscillator();
+    const g = AudioCtx.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(1400,t);
+    g.gain.setValueAtTime(0.18,t);
+    g.gain.exponentialRampToValueAtTime(0.01,t+0.12);
+    o.connect(g); g.connect(AudioCtx.destination);
+    o.start(t); o.stop(t+0.12);
+}
+
+/* ===========================
+   Input handling
+   =========================== */
+document.addEventListener('keydown', (e)=>{
+    if(!levelActive){
+        if(e.code==='Enter'){ e.preventDefault(); startGameNow(); }
+        if(e.code==='Escape'){ e.preventDefault(); if(!document.getElementById('shopScreen').classList.contains('hidden')) closeShop(); else backToMenu(); }
+    }
+    // start timer on first arrow press handled by startLevel (we use keyboard always)
+    if(e.code==='ArrowUp'){ e.preventDefault(); crosshairY = Math.max(0, crosshairY - moveSpeed); updateCrosshairPos(); }
+    if(e.code==='ArrowDown'){ e.preventDefault(); crosshairY = Math.min(window.innerHeight, crosshairY + moveSpeed); updateCrosshairPos(); }
+    if(e.code==='ArrowLeft'){ e.preventDefault(); crosshairX = Math.max(0, crosshairX - moveSpeed); updateCrosshairPos(); }
+    if(e.code==='ArrowRight'){ e.preventDefault(); crosshairX = Math.min(window.innerWidth, crosshairX + moveSpeed); updateCrosshairPos(); }
+    if(e.code==='Space'){ e.preventDefault(); // shoot
+        shootAction();
+    }
+});
+
+// also allow mouse movement and click for convenience
+document.addEventListener('mousemove', (e)=>{
+    crosshairX = e.clientX; crosshairY = e.clientY; updateCrosshairPos();
+});
+document.addEventListener('click', (e)=>{
+    // click to shoot
+    shootAction();
+});
+
+function updateCrosshairPos(){ crosshair.style.left = (crosshairX-20)+'px'; crosshair.style.top = (crosshairY-20)+'px'; }
+
+/* shoot wrapper */
+function shootAction(){
+    if(!levelActive) return;
+    // sound
+    playGunshot();
+    // create muzzle flash & recoil handled in shootAt
+    shootAt(crosshairX, crosshairY);
+}
+
+/* ===========================
+   Helper: hit marker, sounds done above
+   =========================== */
+
+/* ===========================
+   Navigation & menu helpers
+   =========================== */
+function backToMenu(){
+    // reset everything & show start menu
+    clearIntervalsAndEntities();
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    document.getElementById('startMenu').classList.remove('hidden');
+    levelActive = false;
+    persistPlayer();
+}
+
+function goToShop(){
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    openShop();
+}
+
+function startNextLevel(){
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    startLevel();
+}
+
+/* ===========================
+   Init & small helpers
+   =========================== */
+function init(){
+    // ensure UI reflects saved player
+    updateUI();
+    buildShopUI();
+    // small interval: update target timer display approx based on vanish time
+    setInterval(()=>{
+        // we show constant targetVanishTime, it's not tied to a specific target
+        targetTimerText.textContent = targetVanishTime.toFixed(1);
+    }, 100);
+    // resize handling
+    window.addEventListener('resize', ()=>{ crosshairX = window.innerWidth/2; crosshairY = window.innerHeight/2; updateCrosshairPos(); });
+}
+
+init();
+
+/* expose some functions to buttons */
+window.openShop = openShop;
+window.closeShop = closeShop;
+window.startGameNow = startGameNow;
+window.backToMenu = backToMenu;
+window.goToShop = goToShop;
+window.startNextLevel = startNextLevel;
+window.showLeaderboard = showLeaderboard;
+
+/* keyboard / UI friendly: ensure audio context resumes on user gesture */
+document.addEventListener('pointerdown', ()=>{ if(AudioCtx && AudioCtx.state === 'suspended') AudioCtx.resume(); });
+
+</script>
 </body>
 </html>
